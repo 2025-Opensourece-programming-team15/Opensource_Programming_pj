@@ -20,6 +20,13 @@ USER_AGENT_LIST = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 ]
 
+# robots.txt에 명시된 크롤링 금지(Disallow) 갤러리 ID 목록 정의
+# 이 목록은 '/board/lists/?id=' 또는 '/mgallery/board/lists/?id='로 금지된 ID입니다.
+DISALLOWED_IDS = {
+    '47', 'singo', 'stock_new', 'cat', 'dog', 'baseball_new8', 'm_entertainer1',
+    'stock_new2', 'ib_new', 'd_fighter_new1', 'produce48', 'sportsseoul', 
+    'metakr', 'salgoonews', 'rezero'
+}
 
 def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_keyword: str = "", search_option: int = 0, start_page: int = 1, end_page: int = 3) -> pd.DataFrame:
     """
@@ -27,6 +34,11 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
     """
     
     data_list = []
+
+    # robots.txt disallow 필터링
+    if gallery_id in DISALLOWED_IDS:
+        print(f"\n🚨 경고: 갤러리 ID '{gallery_id}'는 robots.txt에 의해 크롤링이 금지된 ID입니다. 작업을 중단합니다.")
+        return pd.DataFrame(data_list)
 
     # 갤러리 종류별 주소 설정
     if gallery_type == "minor":
