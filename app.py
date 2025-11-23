@@ -65,7 +65,7 @@ def query_controller(user_input):
         "gallery_id": "키워드를 검색할 갤러리의 갤러리 ID (예: 'maplestory_new', 'leagueoflegends6', 'chzzk'). 모르거나 통합검색이 적합할 경우 null",
         "gallery_type": "gallery_id값에 해당하는 갤러리의 종류로 다음 셋 중 하나 ('major' | 'minor' | 'mini'). 명확하지 않을 때는 'major', 통합검색이 적합할 경우 null",
         "sort_type": "통합검색이 적합할 경우 정렬 방식으로 셋 중 하나 ('latest' | 'accuracy'). 통합검색이 필요하지 않을 경우 null",
-        "reply_message": "사용자에게 건넬 말 (clarify나 chat 모드일 때 사용)"
+        "reply_message": "mode가 clarify혹은 chat일 때 사용자의 입력에 대한 응답"
     }
     """
     
