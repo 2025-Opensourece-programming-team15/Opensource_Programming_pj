@@ -182,7 +182,7 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
                     'Title': title_clean,
                     'Content': article_contents_clean,
                     'GalleryID': gallery_id,
-                    'URL': full_url
+                    'PostURL': full_url
                 })
 
     # ----------------------
@@ -340,6 +340,7 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
                 'PostID': post_id,
                 'Title': title_clean,
                 'Content': article_contents_clean,
+                'GalleryID': gallery_id,
                 'GalleryName': gallery_name,
                 'PostURL': post_url
             })
