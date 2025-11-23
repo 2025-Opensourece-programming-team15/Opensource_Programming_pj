@@ -10,17 +10,22 @@ load_dotenv()
 
 @st.cache_resource
 def initialize_gemini():
-    # 환경변수에서 API 키 불러오기
+    # 환경변수에서 API 키, 모델 불러오기
     YOUR_API_KEY = os.getenv("API_KEY")
+    YOUR_MODEL = os.getenv("MODEL")
 
     # 키가 없는 경우 예외 처리
     if not YOUR_API_KEY:
         st.error("API 키를 찾을 수 없습니다. `.env` 파일에 'API_KEY'를 설정해주세요.")
         st.stop()
 
+    if not YOUR_MODEL:
+        st.error("모델이 설정되지 않았습니다. '.env' 파일에 'MODEL'을 설정해주세요.")
+        st.stop()
+
     # gemini 기본 설정(API & 모델)
     genai.configure(api_key=YOUR_API_KEY)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel(YOUR_MODEL)
     print("model loaded...")
     return model
 

@@ -1,7 +1,7 @@
 # 1. 필요한 함수를 모듈에서 임포트합니다.
 try:
     # 두 크롤러 함수를 모두 임포트합니다.
-    from dc_scraper_functions import get_regular_post_data, get_integrated_search_data
+    from src.scraper import get_regular_post_data, get_integrated_search_data
     import pandas as pd
 except ImportError as e:
     print(f"🚨 오류: 모듈 임포트 실패! 파일명을 확인하세요. ({e})")
