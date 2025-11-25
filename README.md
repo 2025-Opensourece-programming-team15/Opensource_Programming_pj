@@ -237,3 +237,5 @@ def get_integrated_search_data(
 | `PostURL` | 게시물 원본 URL |
 
 ---
+
+
