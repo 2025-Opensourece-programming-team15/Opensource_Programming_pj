@@ -70,7 +70,6 @@ def extract_comments(soup):
     
     for li in cmt_list:
         # 삭제된 댓글 등은 제외하고 실제 텍스트가 있는 경우만 추출
-        # 제공해주신 HTML 구조에 따라 .usertxt 클래스를 가진 p 태그를 찾음
         txt_box = li.select_one('div.cmt_txtbox p.usertxt')
         
         if txt_box:
@@ -79,7 +78,6 @@ def extract_comments(soup):
                 extracted_comments.append(c_text)
                 
     # 결과 포맷팅 (내용 ||| 내용)
-    # 번호를 매기지 않고 구분자만 사용하여 나중에 list split이 용이하게 함
     if extracted_comments:
         comments_formatted = " ||| ".join(extracted_comments)
         
@@ -88,7 +86,7 @@ def extract_comments(soup):
 # -----------------------------------------------------------
 # 1. 일반 갤러리 크롤링 함수 (Selenium 적용)
 # -----------------------------------------------------------
-def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_keyword: str = "", search_option: int = 0, start_page: int = 1, end_page: int = 3) -> pd.DataFrame:
+def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_keyword: str = "", search_option: int = 0, start_page: int = 1, end_page: int = 1) -> pd.DataFrame:
     
     data_list = []
     BASE_URL = "https://gall.dcinside.com"
@@ -106,7 +104,6 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
             'GalleryID': 'robots.txt disallow',
             'PostURL': 'robots.txt disallow'
         })
-        
         return pd.DataFrame(data_list)
 
     # 갤러리 타입에 따른 URL 설정
@@ -131,9 +128,7 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
             params = {'id': gallery_id, 'page': i}
             
             if search_keyword:
-                # [수정] 파라미터 순서: search_pos -> s_type -> s_keyword
                 params['search_pos'] = ''
-                
                 if search_option == 0: params['s_type'] = 'search_subject_memo'
                 elif search_option == 1: params['s_type'] = 'search_subject'
                 elif search_option == 2: params['s_type'] = 'search_memo'
@@ -141,11 +136,10 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
                 params['s_keyword'] = search_keyword
             
             full_list_url = f"{BASE_URL}{board_path}?{urllib.parse.urlencode(params)}"
-            print(f"--- 목록 페이지 {i} 진입: {full_list_url} ---")
+            print(f"--- [DC 일반] 목록 페이지 {i} 진입: {full_list_url} ---")
             
             try:
                 driver.get(full_list_url)
-                # 목록 테이블 로딩 대기
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, 'tbody tr.ub-content'))
                 )
@@ -159,25 +153,21 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
             
             valid_rows = []
             for row in article_rows:
-                # 1. data-type 기반 공지 필터링 (기존)
+                # 1. data-type 기반 공지 필터링
                 data_type = row.get('data-type')
-                if data_type and 'icon_notice' in data_type:
-                    continue
+                if data_type and 'icon_notice' in data_type: continue
 
                 # 2. 작성자(운영자) 필터링
                 writer_td = row.select_one('td.gall_writer')
                 if writer_td:
-                    if writer_td.get('user_name') == '운영자':
-                        continue
-                    if writer_td.get_text(strip=True) == '운영자':
-                        continue
+                    if writer_td.get('user_name') == '운영자': continue
+                    if writer_td.get_text(strip=True) == '운영자': continue
 
-                # 3. 말머리(이슈, 공지 등) 텍스트 기반 필터링
+                # 3. 말머리(이슈, 공지 등) 필터링
                 subject_td = row.select_one('td.gall_subject')
                 if subject_td:
                     subject_txt = subject_td.get_text(strip=True)
-                    if subject_txt == '공지':
-                        continue
+                    if subject_txt == '공지': continue
 
                 valid_rows.append(row)
 
@@ -195,13 +185,11 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
                 title_raw = title_tag.get_text(strip=True)
                 relative_url = title_tag['href']
                 
-                # PostID 추출
                 post_id_match = re.search(r'&no=(\d+)', relative_url)
                 post_id = post_id_match.group(1) if post_id_match else None
                 
                 if not post_id: continue
                 
-                # URL 완성
                 if relative_url.startswith('http'):
                     post_full_url = relative_url
                 else:
@@ -215,12 +203,9 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
                     print(f"   -> 게시물 접속: {title_raw[:15]}... (ID: {post_id})")
                     driver.get(post_full_url)
                     
-                    # 본문(.write_div) 로딩 대기
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, 'div.write_div'))
                     )
-                    
-                    # [삭제] 댓글 컨테이너 로딩 대기 삭제 (속도 최적화)
                     
                     post_soup = BeautifulSoup(driver.page_source, 'lxml')
                     
@@ -232,7 +217,6 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
                     comments_text = extract_comments(post_soup)
                     
                     # C. 데이터 클리닝
-                    # URL 제거 패턴
                     url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$\-@\.&+:/?=]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
                     title_clean = re.sub(url_pattern, '', title_raw).strip()
                     content_clean = re.sub(url_pattern, '', content_text).strip()
@@ -261,9 +245,6 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
     df = pd.DataFrame(data_list)
     if not df.empty:
         df = df.drop_duplicates(subset=['GalleryID', 'PostID'], keep='first')
-        print(f"\n--- 크롤링 완료 및 중복 제거 ---")
-        print(f"총 수집된 게시물 수 (원본): {len(data_list)}개")
-        print(f"중복 제거 후 최종 게시물 수: {len(df)}개")
         
     return df
 
@@ -271,7 +252,7 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
 # -----------------------------------------------------------
 # 2. 통합 검색 크롤링 함수 (Selenium 적용)
 # -----------------------------------------------------------
-def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", start_page: int = 1, end_page: int = 3) -> pd.DataFrame:
+def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", start_page: int = 1, end_page: int = 1) -> pd.DataFrame:
     
     data_list = []
     SEARCH_BASE_URL = "https://search.dcinside.com/post/"
@@ -289,7 +270,7 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
             
             # 검색 URL 구성
             full_search_url = f"{SEARCH_BASE_URL}p/{i}/{sort_path}q/{encoded_keyword}"
-            print(f"--- 통합 검색 페이지 {i} 진입: {search_keyword} ---")
+            print(f"--- [DC 통합] 검색 페이지 {i} 진입: {search_keyword} ---")
             
             try:
                 driver.get(full_search_url)
@@ -309,7 +290,6 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
                 
             # 결과 아이템 순회
             for item in result_items:
-                # 제목/링크 추출
                 link_tag = item.select_one('a.tit_txt')
                 if not link_tag: continue
                 
@@ -325,17 +305,15 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
                 if meta_tag and 'id=' in meta_tag.get('href', ''):
                     gallery_id = meta_tag['href'].split('id=')[1].split('&')[0]
                 
-                # robots.txt 필터링
                 if gallery_id in DISALLOWED_IDS:
                     continue
                     
-                # PostID 추출
                 if 'no=' in post_url:
                     post_id = re.search(r'no=(\d+)', post_url).group(1)
                 else:
                     continue
 
-                # 상세 페이지 진입 (본문/댓글 수집)
+                # 상세 페이지 진입
                 time.sleep(random.uniform(2.0, 4.0))
                 
                 try:
@@ -346,15 +324,11 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
                         EC.presence_of_element_located((By.CSS_SELECTOR, 'div.write_div'))
                     )
                     
-                    # [삭제] 댓글 컨테이너 로딩 대기 삭제 (속도 최적화)
-                    
                     post_soup = BeautifulSoup(driver.page_source, 'lxml')
                     
-                    # 본문
                     content_div = post_soup.find('div', class_='write_div')
                     content_text = content_div.get_text('\n', strip=True) if content_div else ""
                     
-                    # 댓글
                     comments_text = extract_comments(post_soup)
                     
                     # 클리닝
@@ -369,7 +343,7 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
                         'Title': title_clean,
                         'Content': content_clean,
                         'Comments': comments_text,
-                        'GalleryID': gallery_name, # 검색 결과는 ID보다 이름이 직관적일 수 있음
+                        'GalleryID': gallery_name,
                         'PostURL': post_url
                     })
                     
@@ -384,8 +358,52 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
     df = pd.DataFrame(data_list)
     if not df.empty:
         df = df.drop_duplicates(subset=['PostID', 'PostURL'], keep='first')
-        print(f"\n--- 통합 검색 크롤링 완료 및 중복 제거 ---")
-        print(f"총 수집된 검색 결과 수 (원본): {len(data_list)}개")
-        print(f"중복 제거 후 최종 결과 수: {len(df)}개")
         
     return df
+
+# -----------------------------------------------------------
+# 3. [NEW] DC 통합 인터페이스 (Wrapper)
+# -----------------------------------------------------------
+def search_dc_inside(search_keyword: str, start_page: int = 1, end_page: int = 1, **kwargs) -> pd.DataFrame:
+    """
+    DC 인사이드 내의 모든 검색 요청(통합 검색 및 갤러리 검색)을 처리하는 단일 진입점입니다.
+    **kwargs에 'gallery_id'가 포함되어 있으면 일반 갤러리 검색으로,
+    그렇지 않으면 통합 검색으로 분기합니다.
+    
+    Args:
+        search_keyword (str): 검색어
+        start_page (int): 시작 페이지
+        end_page (int): 종료 페이지
+        **kwargs:
+            - gallery_id (str): 갤러리 ID (존재 시 갤러리 검색)
+            - gallery_type (str): 갤러리 타입 (기본 'minor')
+            - search_option (int): 검색 옵션 (기본 0)
+            - sort_type (str): 통합 검색 정렬 방식 (기본 'latest')
+    """
+    
+    # 1. gallery_id가 인자에 있으면 -> 특정 갤러리 검색
+    if 'gallery_id' in kwargs and kwargs['gallery_id']:
+        gallery_id = kwargs['gallery_id']
+        gallery_type = kwargs.get('gallery_type', 'minor')
+        search_option = kwargs.get('search_option', 0)
+        
+        print(f"🚀 [DC Wrapper] '{gallery_id}' 갤러리 검색 모드로 진입")
+        return get_regular_post_data(
+            gallery_id=gallery_id,
+            gallery_type=gallery_type,
+            search_keyword=search_keyword,
+            search_option=search_option,
+            start_page=start_page,
+            end_page=end_page
+        )
+        
+    # 2. gallery_id가 없으면 -> DC 전체 통합 검색
+    else:
+        sort_type = kwargs.get('sort_type', 'latest')
+        print(f"🚀 [DC Wrapper] 통합 검색 모드로 진입")
+        return get_integrated_search_data(
+            search_keyword=search_keyword,
+            sort_type=sort_type,
+            start_page=start_page,
+            end_page=end_page
+        )
