@@ -253,7 +253,8 @@ if "messages" not in st.session_state:
 
 # 화면에 이전 대화 기록 출력
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    avatar_img = "assets/purple_avatar.png" if message["role"] == "assistant" else None
+    with st.chat_message(message["role"], avatar=avatar_img):
         st.markdown(message["content"])
 
 # 사용자 입력 처리
@@ -264,7 +265,7 @@ if prompt := st.chat_input("무엇을 분석해 드릴까요?"):
         st.markdown(prompt)
 
     # 2. AI 응답 생성 시작
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="assets/purple_avatar.png"):
         message_placeholder = st.empty()
         full_response = ""
         
