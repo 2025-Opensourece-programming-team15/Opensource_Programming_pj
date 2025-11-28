@@ -89,12 +89,12 @@
 
 ---
 
-### 2.3. 함수 설명 및 사용법
+### 2.3. arca_scraper.py 함수 설명 및 사용법
 
-#### 2.3.1. 함수: `get_arca_posts`
+#### 2.3.1. 함수: `search_arca`
 
 ```python
-def get_arca_posts(
+def search_arca(
     channel_id: str, 
     search_keyword: str = "", 
     start_page: int = 1, 
@@ -162,82 +162,58 @@ def get_arca_posts(
 
 ---
 
-## 5. 프로그램 기능 및 모듈 소개
+## 5. 함수 설명 및 사용법
 
 ### 5.1. DC 인사이드 크롤러 (`src/dc_scraper.py`)
 
-이 모듈은 디시인사이드의 특정 갤러리 또는 게시물을 조회하고 데이터를 처리하는 기능을 수행합니다.
+이 모듈은 디시인사이드의 통합 검색 및 개별 갤러리 크롤링을 수행하는 단일 인터페이스를 제공합니다.
 
-#### 5.1.1. 갤러리 목록 검색 (`get_regular_post_data`)
-주요 갤러리 또는 마이너 갤러리에서 일반 게시글 데이터를 수집합니다.
+#### 5.1.1. 통합 검색 인터페이스 (`search_dc_inside`)
 
-```python
-def get_regular_post_data(
-    gallery_id: str, 
-    gallery_type: str = "minor", 
-    search_keyword: str = "", 
-    search_option: int = 0, 
-    start_page: int = 1, 
-    end_page: int = 3
-) -> pd.DataFrame
+사용자가 입력한 인자(`kwargs`)에 따라 **갤러리 개별 검색** 또는 **전체 통합 검색**을 자동으로 분기하여 수행합니다.
+
 ```
-
-#### 매개변수 설명
-
-| 매개변수 | 타입 | 기본값 | 설명 |
-| :--- | :--- | :--- | :--- |
-| `gallery_id` | `str` | *필수* | 크롤링할 갤러리의 고유 ID (예: `comic_new6`, `aion2`). |
-| `gallery_type` | `str` | `"minor"` | 갤러리 유형 (`major`, `minor`, `mini` 중 하나). |
-| `search_keyword` | `str` | `""` | 검색할 키워드. 미입력 시 해당 갤러리의 단순 게시글 목록을 수집합니다. |
-| `search_option` | `int` | `0` | 검색 옵션 지정.<br> **0:** 제목 + 내용 검색 (기본값)<br> **1:** 제목만 검색<br> **2:** 내용만 검색 |
-| `start_page` | `int` | `1` | 검색을 시작할 페이지 번호. |
-| `end_page` | `int` | `3` | 검색을 종료할 페이지 번호. |
-
-#### 반환 값 (DataFrame Columns)
-
-| 컬럼명 | 설명 |
-| :--- | :--- |
-| `Site` | 게시물이 게시된 사이트 |
-| `PostID` | 게시물 고유 번호 |
-| `Title` | 게시물 제목 |
-| `Content` | 게시물 본문 텍스트 |
-| `comments` | 댓글들 (무조건 None: beautiful soup로는 스크래핑 불가능. 혹시 모를 오류 방지용) |
-| `GalleryID` | 갤러리 ID |
-| `PostURL` | 게시물 원본 URL |
-
-#### 5.1.2. 통합 검색 (`get_integrated_search_data`)
-
-DC 인사이드 통합 검색 페이지를 사용하여 전체 갤러리를 대상으로 게시물을 검색하고, 개별 게시물의 본문까지 크롤링합니다.
-
-```python
-def get_integrated_search_data(
+def search_dc_inside(
     search_keyword: str, 
-    sort_type: str = "latest", 
     start_page: int = 1, 
-    end_page: int = 3
+    end_page: int = 1, 
+    **kwargs
 ) -> pd.DataFrame
+
 ```
 
 #### 매개변수 설명
 
-| 매개변수 | 타입 | 기본값 | 설명 |
-| :--- | :--- | :--- | :--- |
-| `search_keyword` | `str` | *필수* | 통합 검색에 사용할 키워드. |
-| `sort_type` | `str` | `"latest"` | 검색 결과 정렬 방식.<br> **"latest":** 최신순 (기본값)<br> **"accuracy":** 정확도순 |
-| `start_page` | `int` | `1` | 검색을 시작할 페이지 번호. |
-| `end_page` | `int` | `3` | 검색을 종료할 페이지 번호. |
+| 매개변수 | 타입 | 기본값 | 설명 | 
+ | ----- | ----- | ----- | ----- | 
+| `search_keyword` | `str` | *필수* | 검색할 키워드. | 
+| `start_page` | `int` | `1` | 검색을 시작할 페이지 번호. | 
+| `end_page` | `int` | `3` | 검색을 종료할 페이지 번호. | 
+| `**kwargs` | `dict` | `{}` | **검색 모드 결정을 위한 추가 옵션** (아래 참조) | 
+
+#### `**kwargs` 세부 옵션
+
+`kwargs`에 `gallery_id` 포함 여부에 따라 검색 모드가 결정됩니다.
+
+| 모드 | 옵션 키 | 타입 | 기본값 | 설명 | 
+ | ----- | ----- | ----- | ----- | ----- | 
+| **공통** | \\- | \\- | \\- | `gallery_id`가 있으면 갤러리 검색, 없으면 통합 검색으로 동작 | 
+| **갤러리 검색** | `gallery_id` | `str` | \\- | **(필수)** 크롤링할 갤러리 ID (예: `programming`) | 
+|  | `gallery_type` | `str` | `"minor"` | 갤러리 유형 (`major`, `minor`, `mini`) | 
+|  | `search_option` | `int` | `0` | 검색 범위 (0: 제목+내용, 1: 제목, 2: 내용) | 
+| **통합 검색** | `sort_type` | `str` | `"latest"` | 정렬 방식 (`"latest"`: 최신순, `"accuracy"`: 정확도순) | 
 
 #### 반환 값 (DataFrame Columns)
 
-| 컬럼명 | 설명 |
-| :--- | :--- |
-| `Site` | 게시물이 게시된 사이트 |
-| `PostID` | 게시물 고유 번호 |
-| `Title` | 게시물 제목 |
-| `Content` | 게시물 본문 텍스트 |
-| `comments` | 댓글들 (무조건 None: beautiful soup로는 스크래핑 불가능. 혹시 모를 오류 방지용) |
-| `GalleryID` | 갤러리 이름(ID가 아님) |
-| `PostURL` | 게시물 원본 URL |
+| 컬럼명 | 설명 | 
+ | ----- | ----- | 
+| `Site` | 게시물이 게시된 사이트 (Fixed: `DCINSIDE`) | 
+| `PostID` | 게시물 고유 번호 | 
+| `Title` | 게시물 제목 | 
+| `Content` | 게시물 본문 텍스트 | 
+| `Comments` | 댓글 내용 (\` ||| \` 구분자로 연결된 텍스트) | 
+| `GalleryID` | 갤러리 ID (또는 통합 검색 시 갤러리 이름) | 
+| `PostURL` | 게시물 원본 URL | 
 
 ---
 
@@ -275,3 +251,61 @@ def filter_hate_speech(
 | 필터링된 결과가 담긴 새로운 `pd.DataFrame`을 반환합니다. |
 
 ---
+
+## 7. 통합 커뮤니티 검색 인터페이스 (`src/crawler_wrapper.py`)
+
+이 모듈은 디시인사이드(`dc`)와 아카라이브(`arca`)의 개별 크롤러를 통합하고 라우팅하여, 메인 프로그램에서 **단일 함수 호출**로 모든 커뮤니티 검색 작업을 처리할 수 있게 합니다.
+
+#### 7.1. 함수: `search_community`
+
+이 함수는 `target_source`를 기반으로 적절한 하위 크롤러를 호출하며, 스레드 풀(`ThreadPoolExecutor`)을 통해 병렬로 실행될 수 있도록 설계되었습니다.
+
+```python
+def search_community(
+    target_source: str, 
+    keyword: str, 
+    start_page: int = 1, 
+    end_page: int = 1, 
+    **kwargs: Dict[str, Any]
+) -> pd.DataFrame
+```
+
+#### 매개변수 설명 (공통 인자)
+
+| 매개변수 | 타입 | 기본값 | 설명 | 
+| :--- | :--- | :--- | :--- |
+| `target_source` | `str` | *필수* | 검색할 커뮤니티 식별자입니다. (`dc` 또는 `arca`) |
+| `keyword` | `str` | *필수* | 검색할 키워드. |
+| `start_page` | `int` | `1` | 검색을 시작할 페이지 번호. |
+| `end_page` | `int` | `1` | 검색을 종료할 페이지 번호. |
+| `**kwargs` | `dict` | `{}` | **커뮤니티별 상세 옵션** (아래 참조). |
+
+---
+
+#### 7.2. `**kwargs` 옵션 상세
+
+`**kwargs` 인자는 `target_source` 값에 따라 필요한 추가 옵션을 유연하게 전달합니다.
+
+| `target_source` | 옵션 키 | 타입 | 기본값 | 설명 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`dc`** (디시인사이드) | `gallery_id` | `str` | - | **갤러리 검색 시 필수.** (예: `programming`). 이 인자가 있으면 갤러리 검색, 없으면 통합 검색으로 분기됩니다. |
+| | `gallery_type` | `str` | `"minor"` | 갤러리 유형 (`major`, `minor`, `mini`). (갤러리 검색 시 사용) |
+| | `search_option` | `int` | `0` | 검색 범위 (0: 제목+내용, 1: 제목, 2: 내용). (갤러리 검색 시 사용) |
+| | `sort_type` | `str` | `"latest"` | 정렬 방식 (`"latest"`: 최신순, `"accuracy"`: 정확도순). (통합 검색 시 사용) |
+| **`arca`** (아카라이브) | `channel_id` | `str` | `"breaking"` | 크롤링할 채널 ID. (예: `genshin`, `hotdeal`) |
+
+---
+
+#### 7.3. 반환 값 (DataFrame Columns)
+
+모든 크롤러는 통일된 컬럼 구조를 반환합니다.
+
+| 컬럼명 | 설명 | 
+| :--- | :--- |
+| `Site` | 게시물이 게시된 사이트 (예: `DCINSIDE`, `ARCALIVE`) | 
+| `PostID` | 게시물 고유 번호 | 
+| `Title` | 게시물 제목 | 
+| `Content` | 게시물 본문 텍스트 | 
+| `Comments` | 댓글 내용 (` ||| ` 구분자로 연결된 텍스트) | 
+| `GalleryID` | 갤러리/채널 ID 또는 이름 | 
+| `PostURL` | 게시물 원본 URL | 
