@@ -257,7 +257,7 @@ def generate_report(user_input, df):
     __REF_DATA__
     {{"reference_ids": [1, 5, 10]}}
     """
-    
+    # __REF_DATA__ 쪽은 실제로 채팅에 출력 안되도록 설정되어있음
     # 스트리밍 활성화 (stream=True)
     # JSON 모드는 스트리밍 뷰를 망치므로 해제하고 텍스트 모드로 받음
     return model.generate_content(prompt, stream=True)
