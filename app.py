@@ -265,8 +265,33 @@ def generate_report(user_input, df):
 # --------------------------------------------------------------------------
 # 5. 메인 로직 
 # --------------------------------------------------------------------------
-st.title("🕵️‍♂️ Community Insight Bot")
-st.caption("AI가 자동으로 커뮤니티를 선정하고 커뮤니티 기반 정보와 여론을 분석합니다.")
+st.markdown("""
+    <style>
+    .main-header {
+        font-size: 2.5rem !important;
+        font-weight: 700 !important;
+        color: #333399 !important;
+        margin-bottom: 0px !important;
+    }
+    .sub-header {
+        font-size: 1.1rem !important;
+        color: #666 !important;
+        margin-top: -10px !important;
+        margin-bottom: 20px !important;
+    }
+    div.stButton > button {
+        width: 100% !important;
+        border-radius: 20px !important;
+        border: 1px solid #ddd !important;
+    }
+    </style>
+    <div style="text-align: left;">
+        <h1 class="main-header">🌏 Community Insight Bot</h1>
+        <p class="sub-header">AI가 자동으로 커뮤니티를 선정하고 커뮤니티 기반 정보와 여론을 분석합니다🧐.</p>
+    </div>
+    <hr style="margin-top: 0; margin-bottom: 30px;">
+""", unsafe_allow_html=True)
+
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -274,22 +299,45 @@ if "messages" not in st.session_state:
     st.session_state.messages.append({"role": "assistant", "content": welcome_msg})
 
 for message in st.session_state.messages:
-    avatar_img = "assets/purple_avatar.png" if message["role"] == "assistant" else None
+    if message["role"] == "assistant":
+        avatar_img = "🕵️"
+    else: 
+        avatar_img = "💁‍♂️" 
     with st.chat_message(message["role"], avatar=avatar_img):
         st.markdown(message["content"])
 
+clicked_prompt = None
+
+# 추천키워드
+prompt = st.chat_input("무엇을 분석해 드릴까요?")
+if len(st.session_state.messages) < 2:
+    st.caption("🔥 요즘 핫한 키워드 / 추천 질문")
+    col1, col2, col3, col4 = st.columns(4)
+    if col1.button("🎮 롤드컵 반응"):
+        prompt = "이번 롤드컵 커뮤니티 반응 알려줘"
+
+    if col2.button("📱 아이폰 16 후기"):
+        prompt = "아이폰 16 실사용 후기 요약해줘"
+
+    if col3.button("⚽ 손흥민 현지 반응"):
+        prompt = "손흥민 최근 경기 현지 및 국내 반응"
+
+    if col4.button("👩‍🍳‍ 흑백요리사 여론"):
+        prompt = "넷플릭스 흑백요리사 프로그램 여론 알려줘"
+
+
 # 사용자 입력 처리
-if prompt := st.chat_input("무엇을 분석해 드릴까요?"):
+if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="💁‍♂️"):
         st.markdown(prompt)
 
     # AI 응답 생성 시작
-    with st.chat_message("assistant", avatar="assets/purple_avatar.png"):
+    with st.chat_message("assistant", avatar="🕵️"):
         message_placeholder = st.empty()
         full_response = ""
         
-        with st.status("🤔 사용자의 질문을 분석하고 있습니다...", expanded=True) as status:
+        with st.status("🕵️ 사용자의 질문을 분석하고 있습니다...", expanded=True) as status:
             
             # [Step 1] 검색 계획 수립
             plan = get_search_plan(prompt)
