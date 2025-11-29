@@ -55,14 +55,108 @@
     ```
 
 ---
+## 2. 통합 커뮤니티 검색 인터페이스 (`src/crawler_wrapper.py`)
 
-## 2. Arcalive Crawler: 아카라이브 크롤러 (`src/arca_scraper.py`)
+이 모듈은 디시인사이드(`dc`)와 아카라이브(`arca`)의 개별 크롤러를 통합하고 라우팅하여, 메인 프로그램에서 **단일 함수 호출**로 모든 커뮤니티 검색 작업을 처리할 수 있게 합니다.
+
+### 2.1. 함수: `search_community`
+
+이 함수는 `target_source`를 기반으로 적절한 하위 크롤러를 호출하며, 스레드 풀(`ThreadPoolExecutor`)을 통해 병렬로 실행될 수 있도록 설계되었습니다.
+
+```python
+def search_community(
+    target_source: str, 
+    keyword: str, 
+    start_page: int = 1, 
+    end_page: int = 1, 
+    **kwargs: Dict[str, Any]
+) -> pd.DataFrame
+```
+
+#### 매개변수 설명 (공통 인자)
+
+| 매개변수 | 타입 | 기본값 | 설명 | 
+| :--- | :--- | :--- | :--- |
+| `target_source` | `str` | *필수* | 검색할 커뮤니티 식별자입니다. (`dc` 또는 `arca`) |
+| `keyword` | `str` | *필수* | 검색할 키워드. |
+| `start_page` | `int` | `1` | 검색을 시작할 페이지 번호. |
+| `end_page` | `int` | `1` | 검색을 종료할 페이지 번호. |
+| `**kwargs` | `dict` | `{}` | **커뮤니티별 상세 옵션** (아래 참조). |
+
+---
+
+#### 2.2. `**kwargs` 옵션 상세
+
+`**kwargs` 인자는 `target_source` 값에 따라 필요한 추가 옵션을 유연하게 전달합니다.
+
+| `target_source` | 옵션 키 | 타입 | 기본값 | 설명 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`dc`** (디시인사이드) | `gallery_id` | `str` | - | **갤러리 검색 시 필수.** (예: `programming`). 이 인자가 있으면 갤러리 검색, 없으면 통합 검색으로 분기됩니다. |
+| | `gallery_type` | `str` | `"minor"` | 갤러리 유형 (`major`, `minor`, `mini`). (갤러리 검색 시 사용) |
+| | `search_option` | `int` | `0` | 검색 범위 (0: 제목+내용, 1: 제목, 2: 내용). (갤러리 검색 시 사용) |
+| | `sort_type` | `str` | `"latest"` | 정렬 방식 (`"latest"`: 최신순, `"accuracy"`: 정확도순). (통합 검색 시 사용) |
+| **`arca`** (아카라이브) | `channel_id` | `str` | `"breaking"` | 크롤링할 채널 ID. (예: `genshin`, `hotdeal`) |
+
+---
+
+#### 2.3. 반환 값 (DataFrame Columns)
+
+모든 크롤러는 통일된 컬럼 구조를 반환합니다.
+
+| 컬럼명 | 설명 | 
+| :--- | :--- |
+| `Site` | 게시물이 게시된 사이트 (예: `DCINSIDE`, `ARCALIVE`) | 
+| `PostID` | 게시물 고유 번호 | 
+| `Title` | 게시물 제목 | 
+| `Content` | 게시물 본문 텍스트 | 
+| `Comments` | 댓글 내용 (` ||| ` 구분자로 연결된 텍스트) | 
+| `GalleryID` | 갤러리/채널 ID 또는 이름 | 
+| `PostURL` | 게시물 원본 URL | 
+
+---
+
+## 3. 혐오 표현 필터링 (Hate Speech Filter)
+
+수집된 데이터에서 혐오 표현을 감지하고 필터링하는 기능을 제공합니다. H2O AutoML 모델과 KoNLPy를 사용합니다.
+
+> **⚠️ 주의: Java 설치 필요**
+> `h2o`와 `konlpy` 라이브러리 사용을 위해서는 시스템에 **Java (JDK)**가 설치되어 있어야 합니다.
+
+### 3.1. 혐오 표현 필터링 함수 (`src/preprocessor.py`)
+
+```python
+def filter_hate_speech(
+    df: pd.DataFrame, 
+    model_path: str = MODEL_PATH, 
+    vectorizer_path: str = VECTORIZER_PATH
+) -> pd.DataFrame
+```
+
+#### 매개변수 설명
+
+| 매개변수 | 타입 | 기본값 | 설명 |
+| :--- | :--- | :--- | :--- |
+| `df` | `pd.DataFrame` | *필수* | 필터링할 데이터프레임. `Title`, `Content`, `Comments` 컬럼을 포함해야 합니다. |
+| `model_path` | `str` | `models/GLM_...` | 학습된 H2O 모델 파일 경로. |
+| `vectorizer_path` | `str` | `models/tfidf...` | 학습된 TF-IDF 벡터라이저 파일 경로. |
+
+#### 반환 값
+
+| 설명 |
+| :--- |
+| 혐오 표현이 포함된 게시물(Title, Content)은 **행 전체가 삭제**됩니다. |
+| 댓글(Comments)의 경우, 혐오 표현으로 감지된 **개별 댓글만 제거**되고 나머지 정상 댓글은 유지됩니다. |
+| 필터링된 결과가 담긴 새로운 `pd.DataFrame`을 반환합니다. |
+
+---
+
+## 4. Arcalive Crawler: 아카라이브 크롤러 (`src/arca_scraper.py`)
 
 아카라이브 채널 및 통합 검색을 통해 게시물과 댓글을 수집합니다. Selenium을 사용하여 동적 콘텐츠를 처리합니다.
 
 > **⚠️ 경고: 본 프로그램을 사용하기 전에 아래 규정 및 고지사항을 반드시 숙지하십시오.**
 
-### 2.1. 아카라이브 이용 규정 (발췌)
+### 4.1. 아카라이브 이용 규정 (발췌)
 
 #### <8. 기타 제한 사항>
 - 서버에 부하를 주는 크롤링, 스크랩핑을 시도할 경우 사이트 이용이 제한됩니다.
@@ -72,7 +166,7 @@
 
 ---
 
-## 2.2. 🚨 중요 고지: 프로그램 사용자의 책임 및 면책 사항 🚨
+## 4.2. 🚨 중요 고지: 프로그램 사용자의 책임 및 면책 사항 🚨
 
 **본 프로그램을 사용하기 전에 아카라이브의 이용 규정을 반드시 숙지해야 하며, 아래의 모든 내용에 동의함을 확인합니다.**
 
@@ -89,9 +183,9 @@
 
 ---
 
-### 2.3. arca_scraper.py 함수 설명 및 사용법
+### 4.3. arca_scraper.py 함수 설명 및 사용법
 
-#### 2.3.1. 함수: `search_arca`
+#### 4.3.1. 함수: `search_arca`
 
 ```python
 def search_arca(
@@ -124,21 +218,21 @@ def search_arca(
 | `PostURL` | 게시물 원본 URL |
 
 ---
-## 3. DC Inside Data Tool - 디시인사이드 크롤러/정보 수집 도구
+## 5. DC Inside Data Tool - 디시인사이드 크롤러/정보 수집 도구
 
 > **⚠️ 경고: 본 프로그램 사용 전 반드시 아래 약관 및 고지사항을 숙지하십시오.**
 
 ---
 
-### 3.1 디시인사이드 이용약관 (발췌)
+### 5.1 디시인사이드 이용약관 (발췌)
 
 본 프로그램은 다음 디시인사이드 이용약관 조항에 명시된 금지 행위를 위한 도구가 아닙니다.
 
-#### 3.1.1 <제11조 (이용자의 의무) 13항>
+#### 5.1.1 <제11조 (이용자의 의무) 13항>
 
 13. 자동화된 수단을 이용하여 서비스에 게재된 콘텐츠를 비롯한 기타 정보(고정닉, 닉네임, 비회원의 일부 IP 등)를 수집하거나 인공지능(AI) 학습을 목적으로 수집, 이용하는 행위
 
-#### 3.1.2 <제15조 (크롤링 및 인공지능 학습)>
+#### 5.1.2 <제15조 (크롤링 및 인공지능 학습)>
 
 ① 회사는 robots.txt에 적용한 일부 사이트에 한해서 크롤링을 허용하고 있습니다. 당사의 사전 서면 동의 없이 어떤 형태로든 어떤 목적으로든 본 서비스를 크롤링하는 행위는 명시적으로 금지됩니다.
 ② 회사의 콘텐츠를 인공지능 학습용 데이터(머신러닝, 딥러닝 등 인공지능 모델 학습을 위해 활용되는 모든 데이터) 등에 활용할 경우 반드시 회사와 사전 합의해야 합니다. 공익 및 비영리 목적인 경우에도 회사의 동의를 받아야 합니다. 그렇지 않을 경우, 민형사상 책임을 물을 수 있습니다.
@@ -162,9 +256,9 @@ def search_arca(
 
 ---
 
-### 3.2. 함수 설명 및 사용법
+### 5.2. 함수 설명 및 사용법
 
-#### 3.2.1. DC 인사이드 크롤러 (`src/dc_scraper.py`)
+#### 5.2.1. DC 인사이드 크롤러 (`src/dc_scraper.py`)
 
 이 모듈은 디시인사이드의 통합 검색 및 개별 갤러리 크롤링을 수행하는 단일 인터페이스를 제공합니다.
 
@@ -213,99 +307,4 @@ def search_dc_inside(
 | `Content` | 게시물 본문 텍스트 | 
 | `Comments` | 댓글 내용 (\` ||| \` 구분자로 연결된 텍스트) | 
 | `GalleryID` | 갤러리 ID (또는 통합 검색 시 갤러리 이름) | 
-| `PostURL` | 게시물 원본 URL | 
-
----
-
-## 4. 혐오 표현 필터링 (Hate Speech Filter)
-
-수집된 데이터에서 혐오 표현을 감지하고 필터링하는 기능을 제공합니다. H2O AutoML 모델과 KoNLPy를 사용합니다.
-
-> **⚠️ 주의: Java 설치 필요**
-> `h2o`와 `konlpy` 라이브러리 사용을 위해서는 시스템에 **Java (JDK)**가 설치되어 있어야 합니다.
-
-### 4.1. 혐오 표현 필터링 함수 (`src/preprocessor.py`)
-
-```python
-def filter_hate_speech(
-    df: pd.DataFrame, 
-    model_path: str = MODEL_PATH, 
-    vectorizer_path: str = VECTORIZER_PATH
-) -> pd.DataFrame
-```
-
-#### 매개변수 설명
-
-| 매개변수 | 타입 | 기본값 | 설명 |
-| :--- | :--- | :--- | :--- |
-| `df` | `pd.DataFrame` | *필수* | 필터링할 데이터프레임. `Title`, `Content`, `Comments` 컬럼을 포함해야 합니다. |
-| `model_path` | `str` | `models/GLM_...` | 학습된 H2O 모델 파일 경로. |
-| `vectorizer_path` | `str` | `models/tfidf...` | 학습된 TF-IDF 벡터라이저 파일 경로. |
-
-#### 반환 값
-
-| 설명 |
-| :--- |
-| 혐오 표현이 포함된 게시물(Title, Content)은 **행 전체가 삭제**됩니다. |
-| 댓글(Comments)의 경우, 혐오 표현으로 감지된 **개별 댓글만 제거**되고 나머지 정상 댓글은 유지됩니다. |
-| 필터링된 결과가 담긴 새로운 `pd.DataFrame`을 반환합니다. |
-
----
-
-## 5. 통합 커뮤니티 검색 인터페이스 (`src/crawler_wrapper.py`)
-
-이 모듈은 디시인사이드(`dc`)와 아카라이브(`arca`)의 개별 크롤러를 통합하고 라우팅하여, 메인 프로그램에서 **단일 함수 호출**로 모든 커뮤니티 검색 작업을 처리할 수 있게 합니다.
-
-### 5.1. 함수: `search_community`
-
-이 함수는 `target_source`를 기반으로 적절한 하위 크롤러를 호출하며, 스레드 풀(`ThreadPoolExecutor`)을 통해 병렬로 실행될 수 있도록 설계되었습니다.
-
-```python
-def search_community(
-    target_source: str, 
-    keyword: str, 
-    start_page: int = 1, 
-    end_page: int = 1, 
-    **kwargs: Dict[str, Any]
-) -> pd.DataFrame
-```
-
-#### 매개변수 설명 (공통 인자)
-
-| 매개변수 | 타입 | 기본값 | 설명 | 
-| :--- | :--- | :--- | :--- |
-| `target_source` | `str` | *필수* | 검색할 커뮤니티 식별자입니다. (`dc` 또는 `arca`) |
-| `keyword` | `str` | *필수* | 검색할 키워드. |
-| `start_page` | `int` | `1` | 검색을 시작할 페이지 번호. |
-| `end_page` | `int` | `1` | 검색을 종료할 페이지 번호. |
-| `**kwargs` | `dict` | `{}` | **커뮤니티별 상세 옵션** (아래 참조). |
-
----
-
-#### 5.2. `**kwargs` 옵션 상세
-
-`**kwargs` 인자는 `target_source` 값에 따라 필요한 추가 옵션을 유연하게 전달합니다.
-
-| `target_source` | 옵션 키 | 타입 | 기본값 | 설명 |
-| :--- | :--- | :--- | :--- | :--- |
-| **`dc`** (디시인사이드) | `gallery_id` | `str` | - | **갤러리 검색 시 필수.** (예: `programming`). 이 인자가 있으면 갤러리 검색, 없으면 통합 검색으로 분기됩니다. |
-| | `gallery_type` | `str` | `"minor"` | 갤러리 유형 (`major`, `minor`, `mini`). (갤러리 검색 시 사용) |
-| | `search_option` | `int` | `0` | 검색 범위 (0: 제목+내용, 1: 제목, 2: 내용). (갤러리 검색 시 사용) |
-| | `sort_type` | `str` | `"latest"` | 정렬 방식 (`"latest"`: 최신순, `"accuracy"`: 정확도순). (통합 검색 시 사용) |
-| **`arca`** (아카라이브) | `channel_id` | `str` | `"breaking"` | 크롤링할 채널 ID. (예: `genshin`, `hotdeal`) |
-
----
-
-#### 5.3. 반환 값 (DataFrame Columns)
-
-모든 크롤러는 통일된 컬럼 구조를 반환합니다.
-
-| 컬럼명 | 설명 | 
-| :--- | :--- |
-| `Site` | 게시물이 게시된 사이트 (예: `DCINSIDE`, `ARCALIVE`) | 
-| `PostID` | 게시물 고유 번호 | 
-| `Title` | 게시물 제목 | 
-| `Content` | 게시물 본문 텍스트 | 
-| `Comments` | 댓글 내용 (` ||| ` 구분자로 연결된 텍스트) | 
-| `GalleryID` | 갤러리/채널 ID 또는 이름 | 
 | `PostURL` | 게시물 원본 URL | 
