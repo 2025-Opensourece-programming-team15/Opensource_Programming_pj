@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 # -----------------------------------------------------------
 
 # [시연용 설정] 목표 수집 개수
-TARGET_COUNT = 18 
+TARGET_COUNT = 16 
 
 # robots.txt에 명시된 크롤링 금지(Disallow) 갤러리 ID 목록
 DISALLOWED_IDS = {

@@ -67,7 +67,7 @@ def search_arca(channel_id: str = 'breaking', search_keyword: str = "", start_pa
     data_list = []
     
     # [시연용 설정] 목표 수집 개수
-    TARGET_COUNT = 18 
+    TARGET_COUNT = 16 
 
     # robots.txt disallow 채널 필터링
     if channel_id in DISALLOWED_CHANNEL_IDS:
