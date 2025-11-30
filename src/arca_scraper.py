@@ -66,6 +66,9 @@ def search_arca(channel_id: str = 'breaking', search_keyword: str = "", start_pa
     
     data_list = []
     
+    # [시연용 설정] 목표 수집 개수
+    TARGET_COUNT = 18 
+
     # robots.txt disallow 채널 필터링
     if channel_id in DISALLOWED_CHANNEL_IDS:
         print(f"\n🚨 경고: 채널 ID '{channel_id}'는 robots.txt에 의해 크롤링이 금지된 ID입니다. 작업을 중단합니다.")
@@ -267,6 +270,15 @@ def search_arca(channel_id: str = 'breaking', search_keyword: str = "", start_pa
                         'GalleryID': gallery_id_for_output, 
                         'PostURL': post_full_url
                     })
+
+                    # [시연용 추가 1] 게시물 루프 내에서 개수 체크 및 탈출
+                    if len(data_list) >= TARGET_COUNT:
+                        print(f"\n🛑 [ARCA] 목표 개수 {TARGET_COUNT}개 달성! 게시물 수집을 종료합니다.")
+                        break
+            
+            # [시연용 추가 2] 페이지 루프 내에서 개수 체크 및 탈출
+            if len(data_list) >= TARGET_COUNT:
+                break
 
     finally:
         if driver:

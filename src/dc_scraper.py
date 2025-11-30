@@ -18,6 +18,9 @@ from bs4 import BeautifulSoup
 # 설정 및 상수 정의
 # -----------------------------------------------------------
 
+# [시연용 설정] 목표 수집 개수
+TARGET_COUNT = 18 
+
 # robots.txt에 명시된 크롤링 금지(Disallow) 갤러리 ID 목록
 DISALLOWED_IDS = {
     '47', 'singo', 'stock_new', 'cat', 'dog', 'baseball_new8', 'm_entertainer1',
@@ -278,9 +281,18 @@ def get_regular_post_data(gallery_id: str, gallery_type: str = "minor", search_k
                             'PostURL': post_full_url
                         })
 
+                        # [시연용 추가 1] 게시물 루프 내에서 개수 체크 및 탈출
+                        if len(data_list) >= TARGET_COUNT:
+                            print(f"\n🛑 [DC 일반] 목표 개수 {TARGET_COUNT}개 달성! 게시물 수집을 종료합니다.")
+                            break
+
                 except Exception as e:
                     print(f"   -> [DC 일반] 상세 수집 실패: {e}")
                     continue
+
+            # [시연용 추가 2] 페이지 루프 내에서 개수 체크 및 탈출
+            if len(data_list) >= TARGET_COUNT:
+                break
 
     finally:
         driver.quit()
@@ -405,9 +417,18 @@ def get_integrated_search_data(search_keyword: str, sort_type: str = "latest", s
                         'PostURL': post_url
                     })
                     
+                    # [시연용 추가 1] 게시물 루프 내에서 개수 체크 및 탈출
+                    if len(data_list) >= TARGET_COUNT:
+                        print(f"\n🛑 [DC 통합] 목표 개수 {TARGET_COUNT}개 달성! 게시물 수집을 종료합니다.")
+                        break
+
                 except Exception as e:
                     print(f"   -> [DC 통합] 상세 수집 실패: {e}")
                     continue
+
+            # [시연용 추가 2] 페이지 루프 내에서 개수 체크 및 탈출
+            if len(data_list) >= TARGET_COUNT:
+                break
 
     finally:
         driver.quit()
